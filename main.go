@@ -3,13 +3,17 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
+	"os"
 	"strings"
 )
 
 func main() {
-	li, err := net.Listen("tcp", ":6789")
+	port := "6789"
+	li, err := net.Listen("tcp", ":" + port)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -31,8 +35,6 @@ func handle(conn net.Conn) {
 	// read request
 	request(conn)
 
-	// write response
-	respond(conn)
 }
 
 func request(conn net.Conn) {
@@ -43,10 +45,11 @@ func request(conn net.Conn) {
 		fmt.Println(ln)
 		if i == 0 {
 			// request line
-			m := strings.Fields(ln)[0] // method
-			u := strings.Fields(ln)[1] // uri
-			fmt.Println("***METHOD", m)
-			fmt.Println("***URI", u)
+			method := strings.Fields(ln)[0] // method
+			url := strings.Fields(ln)[1] // urL
+			fmt.Println("METHOD", method)
+			fmt.Println("URL", url)
+			response(url, conn)
 		}
 		if ln == "" {
 			// headers are done
@@ -56,13 +59,41 @@ func request(conn net.Conn) {
 	}
 }
 
-func respond(conn net.Conn) {
+func response(fileName string, conn net.Conn) {
+	CRLF := "\r\n"
 
-	body := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title></title></head><body><strong>Hello World</strong></body></html>`
+	d, _ := ioutil.ReadDir("." + fileName)
+	if d != nil {
+		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Diretorio</TITLE></head><body><strong>Diretório</strong></body></html>`
+		fmt.Fprint(conn, "HTTP/1.1 404 Not Found" + CRLF)
+		fmt.Fprintf(conn, "Content-Length: %d" + CRLF, len(entityBody))
+		fmt.Fprint(conn, "Content-Type: text/html" + CRLF)
+		fmt.Fprint(conn, CRLF)
+		fmt.Fprint(conn, entityBody)
+		return
+	}
 
-	fmt.Fprint(conn, "HTTP/1.1 200 OK\r\n")
-	fmt.Fprintf(conn, "Content-Length: %d\r\n", len(body))
-	fmt.Fprint(conn, "Content-Type: text/html\r\n")
-	fmt.Fprint(conn, "\r\n")
-	fmt.Fprint(conn, body)
+	file, err := os.Open("." + strings.TrimSpace(fileName)) // For read access.
+
+	if err != nil {
+		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Not Found</TITLE></head><body><strong>Not Found</strong></body></html>`
+		statusLine := "HTTP/1.1 404 Not Found" + CRLF
+		fmt.Fprint(conn, statusLine)
+		fmt.Fprintf(conn, "Content-Length: %d\r\n", len(entityBody))
+		fmt.Fprint(conn, "Content-Type: text/html" + CRLF)
+		fmt.Fprint(conn, CRLF)
+		fmt.Fprint(conn, entityBody)
+		return
+	}
+	defer file.Close() // make sure to close the file even if we panic.
+
+	fmt.Fprint(conn, "HTTP/1.1 200 OK" + CRLF)
+	fmt.Fprint(conn, "Content-Type: text/html" + CRLF)
+	fmt.Fprint(conn, CRLF)
+
+	_, err = io.Copy(conn, file)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("bytes sent")
 }

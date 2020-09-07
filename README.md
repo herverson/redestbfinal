@@ -428,8 +428,7 @@ Isso completa o código para a segunda fase de desenvolvimento do nosso servidor
 Tente rodar o servidor a partir do diretório onde sua home page está localizada e
 visualizar os arquivos da home page com o browser. Lembre-se de incluir um
 especificador de porta na URL, de forma que o browser não tente se conectar pela porta
-
-80. Quando você se conectar ao servidor Web em execução, examine as requisições
+:80. Quando você se conectar ao servidor Web em execução, examine as requisições
 GET de mensagens que o servidor Web receber do browser.
 
 
