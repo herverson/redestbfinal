@@ -13,7 +13,7 @@ import (
 
 func main() {
 	port := "6789"
-	li, err := net.Listen("tcp", ":" + port)
+	li, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -45,10 +45,7 @@ func request(conn net.Conn) {
 		fmt.Println(ln)
 		if i == 0 {
 			// request line
-			method := strings.Fields(ln)[0] // method
 			url := strings.Fields(ln)[1] // urL
-			fmt.Println("METHOD", method)
-			fmt.Println("URL", url)
 			response(url, conn)
 		}
 		if ln == "" {
@@ -65,35 +62,114 @@ func response(fileName string, conn net.Conn) {
 	d, _ := ioutil.ReadDir("." + fileName)
 	if d != nil {
 		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Diretorio</TITLE></head><body><strong>Diretório</strong></body></html>`
-		fmt.Fprint(conn, "HTTP/1.1 404 Not Found" + CRLF)
-		fmt.Fprintf(conn, "Content-Length: %d" + CRLF, len(entityBody))
-		fmt.Fprint(conn, "Content-Type: text/html" + CRLF)
-		fmt.Fprint(conn, CRLF)
-		fmt.Fprint(conn, entityBody)
+		_, _ = fmt.Fprint(conn, "HTTP/1.1 404 Not Found"+CRLF)
+		_, _ = fmt.Fprintf(conn, "Content-Length: %d"+CRLF, len(entityBody))
+		_, _ = fmt.Fprint(conn, "Content-Type: text/html"+CRLF)
+		_, _ = fmt.Fprint(conn, CRLF)
+		_, _ = fmt.Fprint(conn, entityBody)
 		return
 	}
+
+	statusLine := "HTTP/1.1 200 OK"
 
 	file, err := os.Open("." + strings.TrimSpace(fileName)) // For read access.
 
 	if err != nil {
-		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Not Found</TITLE></head><body><strong>Not Found</strong></body></html>`
-		statusLine := "HTTP/1.1 404 Not Found" + CRLF
-		fmt.Fprint(conn, statusLine)
-		fmt.Fprintf(conn, "Content-Length: %d\r\n", len(entityBody))
-		fmt.Fprint(conn, "Content-Type: text/html" + CRLF)
-		fmt.Fprint(conn, CRLF)
-		fmt.Fprint(conn, entityBody)
+		statusLine = "HTTP/1.1 404 Not Found"
+		contentTypeLine := contentType(fileName)
+		_ = sendToClient(statusLine, contentTypeLine, conn, file)
 		return
 	}
 	defer file.Close() // make sure to close the file even if we panic.
 
-	fmt.Fprint(conn, "HTTP/1.1 200 OK" + CRLF)
-	fmt.Fprint(conn, "Content-Type: text/html" + CRLF)
-	fmt.Fprint(conn, CRLF)
+	contentTypeLine := contentType(fileName)
+	err = sendToClient(statusLine, contentTypeLine, conn, file)
 
-	_, err = io.Copy(conn, file)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("bytes sent")
+
+}
+
+func contentType(fileName string) string {
+
+	if strings.HasSuffix(fileName, ".html") || strings.HasSuffix(fileName, ".htm") {
+		return "text/html"
+	}
+	if strings.HasSuffix(fileName, ".txt") {
+		return "text/plain"
+	}
+	//image/gif, image/png, image/jpeg, image/bmp, image/webp
+	if strings.HasSuffix(fileName, ".gif") {
+		return "image/gif"
+	}
+	if strings.HasSuffix(fileName, ".png") {
+		return "image/png"
+	}
+	if strings.HasSuffix(fileName, ".jpg") {
+		return "image/jpg"
+	}
+	if strings.HasSuffix(fileName, ".jpeg") {
+		return "image/jpeg"
+	}
+	if strings.HasSuffix(fileName, ".bmp") {
+		return "image/bmp"
+	}
+	if strings.HasSuffix(fileName, ".webp") {
+		return "image/webp"
+	}
+	//.pdf	Adobe Portable Document Format (PDF)	application/pdf
+	if strings.HasSuffix(fileName, ".pdf") {
+		return "application/pdf"
+	}
+
+	//.ppt	Microsoft PowerPoint	application/vnd.ms-powerpoint
+	if strings.HasSuffix(fileName, ".ppt") {
+		return "application/vnd.ms-powerpoint"
+	}
+	//.rar	RAR archive	application/x-rar-compressed
+	if strings.HasSuffix(fileName, ".rar") {
+		return "application/x-rar-compressed"
+	}
+	//.rtf	Rich Text Format (RTF)	application/rtf
+	//.sh	Bourne shell script	application/x-sh
+	//.svg	Scalable Vector Graphics (SVG)	image/svg+xml
+	//.swf	Small web format (SWF) or Adobe Flash document	application/x-shockwave-flash
+	//.tar	Tape Archive (TAR)	application/x-tar
+	//.tif
+	//.tiff	Tagged Image File Format (TIFF)	image/tiff
+	//.ts	Typescript file	application/typescript
+	//.ttf	TrueType Font	font/ttf
+	//.vsd	Microsoft Visio	application/vnd.visio
+	return "application/octet-stream"
+}
+
+func sendToClient(statusLine string, contentType string, conn net.Conn, file *os.File) error {
+
+	CRLF := "\r\n"
+
+	if file == nil {
+		statusLine += CRLF
+		contentType += CRLF
+		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Not Found</TITLE></head><body><strong>Not Found</strong></body></html>`
+		_, _ = fmt.Fprint(conn, statusLine)
+		_, _ = fmt.Fprintf(conn, "Content-Length: %d\r\n", len(entityBody))
+		_, _ = fmt.Fprint(conn, "Content-Type: "+contentType)
+		_, _ = fmt.Fprint(conn, CRLF)
+		_, _ = fmt.Fprint(conn, entityBody)
+		return nil
+	}
+
+	statusLine += CRLF
+	contentType += CRLF
+	_, _ = fmt.Fprint(conn, statusLine)
+	_, _ = fmt.Fprint(conn, "Content-Type: "+contentType)
+	_, _ = fmt.Fprint(conn, CRLF)
+	_, err := io.Copy(conn, file)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
