@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -57,27 +56,15 @@ func request(conn net.Conn) {
 }
 
 func response(fileName string, conn net.Conn) {
-	CRLF := "\r\n"
-
-	d, _ := ioutil.ReadDir("." + fileName)
-	if d != nil {
-		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Diretorio</TITLE></head><body><strong>Diretório</strong></body></html>`
-		_, _ = fmt.Fprint(conn, "HTTP/1.1 404 Not Found"+CRLF)
-		_, _ = fmt.Fprintf(conn, "Content-Length: %d"+CRLF, len(entityBody))
-		_, _ = fmt.Fprint(conn, "Content-Type: text/html"+CRLF)
-		_, _ = fmt.Fprint(conn, CRLF)
-		_, _ = fmt.Fprint(conn, entityBody)
-		return
-	}
 
 	statusLine := "HTTP/1.1 200 OK"
 
 	file, err := os.Open("." + strings.TrimSpace(fileName)) // For read access.
+	fi, _ := file.Stat()
 
-	if err != nil {
+	if err != nil || fi.IsDir() {
 		statusLine = "HTTP/1.1 404 Not Found"
-		contentTypeLine := contentType(fileName)
-		_ = sendToClient(statusLine, contentTypeLine, conn, file)
+		_ = sendToClient(statusLine, "text/html", conn, file)
 		return
 	}
 	defer file.Close() // make sure to close the file even if we panic.
@@ -147,23 +134,22 @@ func contentType(fileName string) string {
 func sendToClient(statusLine string, contentType string, conn net.Conn, file *os.File) error {
 
 	CRLF := "\r\n"
+	statusLine += CRLF
+	contentType += CRLF
 
-	if file == nil {
-		statusLine += CRLF
-		contentType += CRLF
+	if statusLine == "HTTP/1.1 404 Not Found\r\n" {
+
 		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Not Found</TITLE></head><body><strong>Not Found</strong></body></html>`
 		_, _ = fmt.Fprint(conn, statusLine)
 		_, _ = fmt.Fprintf(conn, "Content-Length: %d\r\n", len(entityBody))
-		_, _ = fmt.Fprint(conn, "Content-Type: "+contentType)
+		_, _ = fmt.Fprint(conn, "Content-Type: " + contentType)
 		_, _ = fmt.Fprint(conn, CRLF)
 		_, _ = fmt.Fprint(conn, entityBody)
 		return nil
 	}
 
-	statusLine += CRLF
-	contentType += CRLF
 	_, _ = fmt.Fprint(conn, statusLine)
-	_, _ = fmt.Fprint(conn, "Content-Type: "+contentType)
+	_, _ = fmt.Fprint(conn, "Content-Type: " + contentType)
 	_, _ = fmt.Fprint(conn, CRLF)
 	_, err := io.Copy(conn, file)
 
