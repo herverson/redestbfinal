@@ -57,13 +57,13 @@ func request(conn net.Conn) {
 
 func response(fileName string, conn net.Conn) {
 
-	statusLine := "HTTP/1.1 200 OK"
+	statusLine := "200 OK"
 
 	file, err := os.Open("." + strings.TrimSpace(fileName)) // For read access.
 	fi, _ := file.Stat()
 
 	if err != nil || fi.IsDir() {
-		statusLine = "HTTP/1.1 404 Not Found"
+		statusLine = "404 Not Found"
 		_ = sendToClient(statusLine, "text/html", conn, file)
 		return
 	}
@@ -119,16 +119,43 @@ func contentType(fileName string) string {
 		return "application/x-rar-compressed"
 	}
 	//.rtf	Rich Text Format (RTF)	application/rtf
+	if strings.HasSuffix(fileName, ".rtf") {
+		return "application/rtf"
+	}
 	//.sh	Bourne shell script	application/x-sh
+	if strings.HasSuffix(fileName, ".sh") {
+		return "application/x-sh"
+	}
 	//.svg	Scalable Vector Graphics (SVG)	image/svg+xml
+	if strings.HasSuffix(fileName, ".svg") {
+		return "image/svg+xml"
+	}
 	//.swf	Small web format (SWF) or Adobe Flash document	application/x-shockwave-flash
+	if strings.HasSuffix(fileName, ".swf") {
+		return "application/x-shockwave-flash"
+	}
 	//.tar	Tape Archive (TAR)	application/x-tar
+	if strings.HasSuffix(fileName, ".tar") {
+		return "application/x-tar"
+	}
 	//.tif
 	//.tiff	Tagged Image File Format (TIFF)	image/tiff
+	if strings.HasSuffix(fileName, ".tiff") {
+		return "image/tiff"
+	}
 	//.ts	Typescript file	application/typescript
+	if strings.HasSuffix(fileName, ".ts") {
+		return "application/typescript"
+	}
 	//.ttf	TrueType Font	font/ttf
+	if strings.HasSuffix(fileName, ".ttf") {
+		return "font/ttf"
+	}
 	//.vsd	Microsoft Visio	application/vnd.visio
-	return "application/octet-stream"
+	if strings.HasSuffix(fileName, ".vsd") {
+		return "application/vnd.visio"
+	}
+		return "application/octet-stream"
 }
 
 func sendToClient(statusLine string, contentType string, conn net.Conn, file *os.File) error {
@@ -137,10 +164,10 @@ func sendToClient(statusLine string, contentType string, conn net.Conn, file *os
 	statusLine += CRLF
 	contentType += CRLF
 
-	if statusLine == "HTTP/1.1 404 Not Found\r\n" {
+	if statusLine == "404 Not Found\r\n" {
 
 		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Not Found</TITLE></head><body><strong>Not Found</strong></body></html>`
-		_, _ = fmt.Fprint(conn, statusLine)
+		_, _ = fmt.Fprint(conn, "HTTP/1.1 " + statusLine)
 		_, _ = fmt.Fprintf(conn, "Content-Length: %d\r\n", len(entityBody))
 		_, _ = fmt.Fprint(conn, "Content-Type: " + contentType)
 		_, _ = fmt.Fprint(conn, CRLF)
@@ -148,7 +175,7 @@ func sendToClient(statusLine string, contentType string, conn net.Conn, file *os
 		return nil
 	}
 
-	_, _ = fmt.Fprint(conn, statusLine)
+	_, _ = fmt.Fprint(conn, "HTTP/1.1 " + statusLine)
 	_, _ = fmt.Fprint(conn, "Content-Type: " + contentType)
 	_, _ = fmt.Fprint(conn, CRLF)
 	_, err := io.Copy(conn, file)
