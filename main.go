@@ -45,7 +45,7 @@ func request(conn net.Conn) {
 		if i == 0 {
 			// request line
 			url := strings.Fields(ln)[1] // urL
-			response(url, conn)
+			respond(url, conn)
 		}
 		if ln == "" {
 			// headers are done
@@ -55,7 +55,7 @@ func request(conn net.Conn) {
 	}
 }
 
-func response(fileName string, conn net.Conn) {
+func respond(fileName string, conn net.Conn) {
 
 	statusLine := "200 OK"
 
@@ -167,7 +167,7 @@ func sendToClient(statusLine string, contentType string, conn net.Conn, file *os
 	if statusLine == "404 Not Found\r\n" {
 
 		entityBody := `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><TITLE>Not Found</TITLE></head><body><strong>Not Found</strong></body></html>`
-		_, _ = fmt.Fprint(conn, "HTTP/1.1 " + statusLine)
+		_, _ = fmt.Fprint(conn, "HTTP/1.0 " + statusLine)
 		_, _ = fmt.Fprintf(conn, "Content-Length: %d\r\n", len(entityBody))
 		_, _ = fmt.Fprint(conn, "Content-Type: " + contentType)
 		_, _ = fmt.Fprint(conn, CRLF)
@@ -175,7 +175,7 @@ func sendToClient(statusLine string, contentType string, conn net.Conn, file *os
 		return nil
 	}
 
-	_, _ = fmt.Fprint(conn, "HTTP/1.1 " + statusLine)
+	_, _ = fmt.Fprint(conn, "HTTP/1.0 " + statusLine)
 	_, _ = fmt.Fprint(conn, "Content-Type: " + contentType)
 	_, _ = fmt.Fprint(conn, CRLF)
 	_, err := io.Copy(conn, file)
