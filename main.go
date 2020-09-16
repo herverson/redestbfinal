@@ -12,13 +12,15 @@ import (
 
 func main() {
 	port := "6789"
+	// listen na porta "port"
 	li, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 	defer li.Close()
-
+	// laço infinito (ou ctrl-c)
 	for {
+		// aceita a conexão com o client
 		conn, err := li.Accept()
 		if err != nil {
 			log.Println(err.Error())
@@ -31,7 +33,7 @@ func main() {
 func handle(conn net.Conn) {
 	defer conn.Close()
 
-	// read request
+	// ler a request
 	request(conn)
 
 }
@@ -43,12 +45,12 @@ func request(conn net.Conn) {
 		ln := scanner.Text()
 		fmt.Println(ln)
 		if i == 0 {
-			// request line
+			// linha do request
 			url := strings.Fields(ln)[1] // urL
 			respond(url, conn)
 		}
 		if ln == "" {
-			// headers are done
+			//cabeçalhos estão prontos
 			break
 		}
 		i++
@@ -59,15 +61,17 @@ func respond(fileName string, conn net.Conn) {
 
 	statusLine := "200 OK"
 
-	file, err := os.Open("." + strings.TrimSpace(fileName)) // For read access.
+	file, err := os.Open("." + strings.TrimSpace(fileName))
+	// verifica a estrutura do arquivo
 	fi, _ := file.Stat()
 
+	// caso não existe um arquivo ou é um diretório
 	if err != nil || fi.IsDir() {
 		statusLine = "404 Not Found"
 		_ = sendToClient(statusLine, "text/html", conn, file)
 		return
 	}
-	defer file.Close() // make sure to close the file even if we panic.
+	defer file.Close()
 
 	contentTypeLine := contentType(fileName)
 	err = sendToClient(statusLine, contentTypeLine, conn, file)
@@ -189,7 +193,7 @@ func sendToClient(statusLine string, contentType string, conn net.Conn, file *os
 }
 
 func sendBytes(conn net.Conn, file *os.File) error {
-	// make um buffer para manter os pedaços que são lidos
+	// make um buffer para armazenar os pedaços que são lidos
 	buf := make([]byte, 1024)
 	for {
 		// ler um pedaço do arquivo
