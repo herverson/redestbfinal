@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -61,7 +62,9 @@ func respond(fileName string, conn net.Conn) {
 
 	statusLine := "200 OK"
 
-	file, err := os.Open("." + strings.TrimSpace(fileName))
+	convertedFilename, _ := url.PathUnescape(fileName)
+
+	file, err := os.Open("." + convertedFilename)
 	// verifica a estrutura do arquivo
 	fi, _ := file.Stat()
 
