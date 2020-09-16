@@ -178,11 +178,33 @@ func sendToClient(statusLine string, contentType string, conn net.Conn, file *os
 	_, _ = fmt.Fprint(conn, "HTTP/1.0 " + statusLine)
 	_, _ = fmt.Fprint(conn, "Content-Type: " + contentType)
 	_, _ = fmt.Fprint(conn, CRLF)
-	_, err := io.Copy(conn, file)
+	//_, err := io.Copy(conn, file)
+	err := sendBytes(conn, file)
 
 	if err != nil {
 		return err
 	}
 
+	return nil
+}
+
+func sendBytes(conn net.Conn, file *os.File) error {
+	// make um buffer para manter os pedaços que são lidos
+	buf := make([]byte, 1024)
+	for {
+		// ler um pedaço do arquivo
+		n, err := file.Read(buf)
+		if err != nil && err != io.EOF {
+			return err
+		}
+
+		if n == 0 {
+			break
+		}
+		// escreve o pedaço
+		if _, err := conn.Write(buf[:n]); err != nil {
+			return err
+		}
+	}
 	return nil
 }
